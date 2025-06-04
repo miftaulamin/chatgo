@@ -16,6 +16,7 @@ struct userinformation user1;
 
 // Function
 
+
 // generateUsername function
 void generateUsername(char email[50], char username[50])
 {
