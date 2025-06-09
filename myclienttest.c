@@ -16,6 +16,17 @@ struct userinformation user1;
 
 // Function
 
+// Take input
+
+void takeinput(char ch[50])
+{
+    fgets(ch, 50, stdin);
+    size_t len = strlen(ch);
+    if (len > 0 && ch[len - 1] == '\n')
+    {
+        ch[len - 1] = '\0';
+    }
+}
 
 // generateUsername function
 void generateUsername(char email[50], char username[50])
@@ -40,38 +51,55 @@ int verifyUser()
 {
 
     FILE *file;
-    int attempt = 4;
+    int attempt = 3;
     char u[50], p[50];
     char fulldata[100], fulldata2[100];
-    printf("Enter Your username: ");
-    scanf("%s", user1.username);
-    getchar();
-    printf("Enter Your password: ");
-    scanf("%s", user1.password);
-    getchar();
-    snprintf(fulldata, sizeof(fulldata), "%s %s", user1.username, user1.password);
 
-    file = fopen("userdata.txt", "r");
+    
 
     while (attempt)
     {
-        fscanf(file, "%s %s", u, p);
-        if (strcmp(u, user1.username) == 0 && strcmp(p, user1.password) == 0)
+
+        int found = 0;
+        printf("Enter Your username: ");
+        takeinput(user1.username);
+        printf("Enter Your password: ");
+        takeinput(user1.password);
+        file = fopen("userdata.dat", "r");
+
+        while (fscanf(file, "%s %s", u, p) == 2)
+        {
+            if (strcmp(u, user1.username) == 0 && strcmp(p, user1.password) == 0)
+            {
+                
+                found = 1;
+                break;
+                
+            }
+        }
+       fclose(file);
+
+
+        if (found)
         {
             printf("Successfully Logged in!\n");
-
             return 1;
         }
+        
         else
         {
             attempt--;
+            printf("Your credential doesnt matched\n");
+            if (attempt == 0)
+            {
+                return 0;
+            }
         }
         // snprintf(fulldata2, sizeof(fulldata2), "%s %s", u, p);
     }
-
-    printf("Your credential doesnt matched\n");
-    return 0;
 }
+
+
 
 // Authentication Function
 
@@ -91,10 +119,42 @@ int auth()
     switch (choice)
     {
     case 1:
+        while (1)
+        {
+            printf("Enter your Email: ");
+            scanf("%s", user1.email);
+            getchar();
+            generateUsername(user1.email, user1.username);
+            // Check if username already exists
+            file = fopen("userdata.dat", "r");
+            if (file != NULL)
+            {
+                char existingUser[50];
+                int userExists = 0;
 
-        printf("Enter your Email: ");
-        scanf("%s", user1.email);
-        getchar();
+                while (fscanf(file, "%s", existingUser) == 1)
+                {
+                    if (strcmp(existingUser, user1.username) == 0)
+                    {
+                        userExists = 1;
+                        break;
+                    }
+                }
+                fclose(file);
+
+                if (userExists)
+                {
+                    printf("Error: Username '%s' is already taken. Please use a different email.\n", user1.username);
+
+                    continue;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+
         while (attempt > 0)
         {
 
@@ -125,10 +185,8 @@ int auth()
             return 0;
         }
 
-        generateUsername(user1.email, user1.username);
-
         printf("\nYour Username is %s\n", user1.username);
-        file = fopen("userdata.txt", "a+");
+        file = fopen("userdata.dat", "a+");
         if (file != NULL)
         {
             fprintf(file, "%s %s\n", user1.username, user1.password);
@@ -137,7 +195,7 @@ int auth()
         }
         else
         {
-            printf("Error opening userdata.txt for writing.\n");
+            printf("Error opening userdata.dat for writing.\n");
         }
 
         break;
@@ -154,7 +212,8 @@ int auth()
         }
 
     default:
-        break;
+
+        return 0;
     }
 }
 
@@ -234,7 +293,7 @@ int main()
     CreateThread(NULL, 0, receiveMessages, &sd, 0, NULL);
 
     // Main loop to send messages
-    fgets(message, sizeof(message), stdin);
+    // fgets(message, sizeof(message), stdin);
     while (1)
     {
         printf("[%s]: ", user1.username);
