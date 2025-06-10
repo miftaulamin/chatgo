@@ -16,7 +16,7 @@ struct userinformation user1;
 
 // Function
 
-// Take input
+// Input function
 
 void takeinput(char ch[50])
 {
