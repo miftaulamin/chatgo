@@ -255,16 +255,12 @@ int main()
 
     char message[MAX_LEN], fullMessage[MAX_LEN + 100];
     SOCKET sd;
+    
     struct sockaddr_in server;
     WSADATA wsa;
 
     // Authentication
-    int goodbye = auth(sd);
-
-    if (goodbye == 0)
-    {
-        return 0;
-    }
+    
 
     // Initialize Winsock
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
@@ -279,6 +275,12 @@ int main()
     {
         printf("Could not create socket. Error: %d\n", WSAGetLastError());
         return 1;
+    }
+    int goodbye = auth(sd);
+
+    if (goodbye == 0)
+    {
+        return 0;
     }
 
     // Server details
