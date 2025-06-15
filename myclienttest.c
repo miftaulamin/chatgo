@@ -65,6 +65,7 @@ int verifyUser()
         takeinput(user1.username);
         printf("Enter Your password: ");
         takeinput(user1.password);
+        system("cls");
         file = fopen("userdata.dat", "r");
 
         while (fscanf(file, "%s %s", u, p) == 2)
@@ -103,18 +104,23 @@ int verifyUser()
 
 // Authentication Function
 
-int auth()
+int auth(SOCKET sd)
 {
     int choice;
     int check;
     int attempt = 3;
     FILE *file;
+    FILE *file2;
+    printf("\t\t\t\t\t|-----------------------------------|\n");
+    printf("\t\t\t\t\t|            C H A T G O            |\n");
+    printf("\t\t\t\t\t|-----------------------------------|\n\n");
     printf("1.Signup\n");
     printf("2.Login\n");
     printf("3.Exit\n");
     printf("Enter your choice: ");
     scanf("%d", &choice);
     getchar();
+    system("cls");
 
     switch (choice)
     {
@@ -163,6 +169,7 @@ int auth()
             getchar();
             printf("\nPlease Confirm Your Password: ");
             scanf("%s", password);
+            getchar();
             if (!strcmp(user1.password, password))
             {
                 printf("\nPassword matched!!\n");
@@ -185,12 +192,14 @@ int auth()
             return 0;
         }
 
-        printf("\nYour Username is %s\n", user1.username);
         file = fopen("userdata.dat", "a+");
+        file2 = fopen("userSock.dat", "a+");
         if (file != NULL)
         {
             fprintf(file, "%s %s\n", user1.username, user1.password);
+            fprintf(file2, "%s %lld\n", user1.username, (long long)sd);
             fclose(file); // Important!
+            fclose(file2); // Important!
             printf("User Registration Successful, Your Username is %s\n", user1.username);
         }
         else
@@ -250,7 +259,7 @@ int main()
     WSADATA wsa;
 
     // Authentication
-    int goodbye = auth();
+    int goodbye = auth(sd);
 
     if (goodbye == 0)
     {
