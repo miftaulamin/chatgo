@@ -3,245 +3,222 @@
 #include <string.h>
 #include <winsock2.h>
 #include <windows.h>
-char password[50];
-#define MAX_LEN 1024
-struct userinformation
-{
 
+#define MAX_LEN 1024
+
+struct userinformation {
     char username[50];
     char email[60];
     char password[50];
 };
+
 struct userinformation user1;
+char password[50];
 
-// Function
-
-// Take input
-
-void takeinput(char ch[50])
-{
+// Input function
+void takeinput(char ch[50]) {
     fgets(ch, 50, stdin);
     size_t len = strlen(ch);
-    if (len > 0 && ch[len - 1] == '\n')
-    {
+    if (len > 0 && ch[len - 1] == '\n') {
         ch[len - 1] = '\0';
     }
 }
 
-// generateUsername function
-void generateUsername(char email[50], char username[50])
-{
-
-    for (int i = 0; i < strlen(email); i++)
-    {
-        if (email[i] == '@')
-        {
+// Generate username from email
+void generateUsername(char email[50], char username[50]) {
+    int i;
+    for (i = 0; i < strlen(email); i++) {
+        if (email[i] == '@') {
             break;
         }
-        else
-        {
-            username[i] = email[i];
-        }
+        username[i] = email[i];
     }
+    username[i] = '\0'; // Null terminate
 }
 
-// Verifyuser function
-
-int verifyUser()
-{
-
-    FILE *file;
+// Verify user function
+int verifyUser(SOCKET sd) {
     int attempt = 3;
-    char u[50], p[50];
-    char fulldata[100], fulldata2[100];
+    char buffer[200];
+    char temp_username[50], temp_password[50];
 
-    
-
-    while (attempt)
-    {
-
-        int found = 0;
+    while (attempt > 0) {
         printf("Enter Your username: ");
-        takeinput(user1.username);
+        takeinput(temp_username);
         printf("Enter Your password: ");
-        takeinput(user1.password);
-        file = fopen("userdata.dat", "r");
+        takeinput(temp_password);
+        system("cls");
 
-        while (fscanf(file, "%s %s", u, p) == 2)
-        {
-            if (strcmp(u, user1.username) == 0 && strcmp(p, user1.password) == 0)
-            {
-                
-                found = 1;
-                break;
-                
-            }
-        }
-       fclose(file);
+        // Send LOGIN command to server
+        snprintf(buffer, sizeof(buffer), "LOGIN %s %s", temp_username, temp_password);
+        send(sd, buffer, strlen(buffer), 0);
 
-
-        if (found)
-        {
-            printf("Successfully Logged in!\n");
-            return 1;
-        }
-        
-        else
-        {
-            attempt--;
-            printf("Your credential doesnt matched\n");
-            if (attempt == 0)
-            {
+        // Wait for server response
+        while (1) {
+            memset(buffer, 0, sizeof(buffer));
+            int bytes = recv(sd, buffer, sizeof(buffer) - 1, 0);
+            if (bytes <= 0) {
+                printf("Server disconnected\n");
                 return 0;
             }
+            buffer[bytes] = '\0';
+
+            if (strcmp(buffer, "OK") == 0) {
+                printf("Successfully Logged in!\n");
+                // Only set the username after successful login
+                strcpy(user1.username, temp_username);
+                strcpy(user1.password, temp_password);
+                Sleep(1000); // Give a moment for user to see the success message
+                return 1;
+            } else if (strcmp(buffer, "FAIL") == 0) {
+                attempt--;
+                printf("Your credentials don't match. %d attempt(s) left.\n", attempt);
+                if (attempt > 0) {
+                    printf("Press Enter to try again...");
+                    getchar();
+                }
+                break; // break out of while(1) to retry
+            } else {
+                // Ignore unrelated messages (like join/leave notifications)
+                continue;
+            }
         }
-        // snprintf(fulldata2, sizeof(fulldata2), "%s %s", u, p);
     }
+    
+    printf("Maximum login attempts exceeded.\n");
+    return 0;
 }
 
-
-
 // Authentication Function
-
-int auth()
-{
+int auth(SOCKET sd) {
     int choice;
-    int check;
     int attempt = 3;
-    FILE *file;
-    printf("1.Signup\n");
-    printf("2.Login\n");
-    printf("3.Exit\n");
+    char buffer[200];
+
+    printf("\t\t\t\t\t|-----------------------------------|\n");
+    printf("\t\t\t\t\t|            C H A T G O            |\n");
+    printf("\t\t\t\t\t|-----------------------------------|\n\n");
+    printf("1. Signup\n");
+    printf("2. Login\n");
+    printf("3. Exit\n");
     printf("Enter your choice: ");
     scanf("%d", &choice);
     getchar();
+    system("cls");
 
-    switch (choice)
-    {
-    case 1:
-        while (1)
-        {
+    switch (choice) {
+        case 1: {
             printf("Enter your Email: ");
             scanf("%s", user1.email);
             getchar();
             generateUsername(user1.email, user1.username);
-            // Check if username already exists
-            file = fopen("userdata.dat", "r");
-            if (file != NULL)
-            {
-                char existingUser[50];
-                int userExists = 0;
+            printf("Generated username: %s\n", user1.username);
 
-                while (fscanf(file, "%s", existingUser) == 1)
-                {
-                    if (strcmp(existingUser, user1.username) == 0)
-                    {
-                        userExists = 1;
-                        break;
-                    }
+            while (attempt > 0) {
+                printf("Enter your Password: ");
+                scanf("%s", user1.password);
+                getchar();
+                printf("Please Confirm Your Password: ");
+                scanf("%s", password);
+                getchar();
+                
+                if (strcmp(user1.password, password) == 0) {
+                    printf("Password matched!!\n");
+                    break;
+                } else {
+                    printf("Passwords don't match, try again!\n");
+                    attempt--;
+                    printf("You have %d attempt(s) left\n", attempt);
+                    Beep(750, 400);
                 }
-                fclose(file);
+            }
 
-                if (userExists)
-                {
-                    printf("Error: Username '%s' is already taken. Please use a different email.\n", user1.username);
+            if (attempt == 0) {
+                printf("Maximum attempts exceeded. Goodbye!\n");
+                return 0;
+            }
 
+            // Send SIGNUP command to server
+            snprintf(buffer, sizeof(buffer), "SIGNUP %s %s", user1.username, user1.password);
+            send(sd, buffer, strlen(buffer), 0);
+
+            // Wait for server response
+            while (1) {
+                memset(buffer, 0, sizeof(buffer));
+                int bytes = recv(sd, buffer, sizeof(buffer) - 1, 0);
+                if (bytes <= 0) {
+                    printf("Server disconnected\n");
+                    return 0;
+                }
+                buffer[bytes] = '\0';
+
+                if (strcmp(buffer, "USER_EXISTS") == 0) {
+                    printf("Username already exists. Please try again.\n");
+                    return auth(sd); // Recursive call to try again
+                } else if (strcmp(buffer, "OK") == 0) {
+                    printf("Signup successful!\n");
+                    return 1;
+                } else if (strcmp(buffer, "FAIL") == 0) {
+                    printf("Signup failed. Please try again.\n");
+                    return 0;
+                } else {
+                    // Ignore unrelated messages (like join/leave notifications)
                     continue;
                 }
-                else
-                {
-                    break;
-                }
             }
-        }
-
-        while (attempt > 0)
-        {
-
-            printf("\nEnter your Password: ");
-            scanf("%s", user1.password);
-            getchar();
-            printf("\nPlease Confirm Your Password: ");
-            scanf("%s", password);
-            if (!strcmp(user1.password, password))
-            {
-                printf("\nPassword matched!!\n");
-
-                break;
-            }
-            else
-            {
-                printf("Password doesnt matched, try again!\n");
-                attempt--;
-                printf("You have %d Attempt left\n", attempt);
-
-                Beep(750, 400);
-            }
-        }
-
-        if (attempt == 0)
-        {
-            printf("Good bye!!");
-            return 0;
-        }
-
-        printf("\nYour Username is %s\n", user1.username);
-        file = fopen("userdata.dat", "a+");
-        if (file != NULL)
-        {
-            fprintf(file, "%s %s\n", user1.username, user1.password);
-            fclose(file); // Important!
-            printf("User Registration Successful, Your Username is %s\n", user1.username);
-        }
-        else
-        {
-            printf("Error opening userdata.dat for writing.\n");
-        }
-
-        break;
-
-    case 2:
-        check = verifyUser();
-        if (check == 0)
-        {
-            verifyUser();
-        }
-        else if (check == 1)
-        {
             break;
         }
-
-    default:
-
-        return 0;
+        
+        case 2: {
+            int check = verifyUser(sd);
+            if (check == 1) {
+                return 1;
+            } else {
+                return 0;
+            }
+            break;
+        }
+        
+        case 3: {
+            printf("Goodbye!\n");
+            return 0;
+        }
+        
+        default: {
+            printf("Invalid choice. Please try again.\n");
+            return auth(sd); // Recursive call for invalid choice
+        }
     }
 }
 
 // Thread function to receive messages from the server
-DWORD WINAPI receiveMessages(LPVOID socketDesc)
-{
-
+DWORD WINAPI receiveMessages(LPVOID socketDesc) {
     SOCKET sock = *(SOCKET *)socketDesc;
     char buffer[MAX_LEN];
     int bytes;
-    char userjoinMsg[100];
 
-    while ((bytes = recv(sock, buffer, sizeof(buffer) - 1, 0)) > 0)
-    {
+    while ((bytes = recv(sock, buffer, sizeof(buffer) - 1, 0)) > 0) {
         buffer[bytes] = '\0';
-
+        
+        // Check if it's an authentication response
+        if (strcmp(buffer, "OK") == 0 || 
+            strcmp(buffer, "FAIL") == 0 || 
+            strcmp(buffer, "USER_EXISTS") == 0 ||
+            strcmp(buffer, "AUTH_REQUIRED") == 0) {
+            // Skip authentication responses in chat mode
+            continue;
+        }
+        
         printf("\n%s\n", buffer);
         printf("[%s]: ", user1.username);
         fflush(stdout);
-        memset(buffer, 0, sizeof(buffer));
     }
 
+    printf("\nDisconnected from server.\n");
     return 0;
 }
 
-int main()
-{
-
+int main() {
     system("color 0A");
 
     char message[MAX_LEN], fullMessage[MAX_LEN + 100];
@@ -249,64 +226,78 @@ int main()
     struct sockaddr_in server;
     WSADATA wsa;
 
-    // Authentication
-    int goodbye = auth();
-
-    if (goodbye == 0)
-    {
-        return 0;
-    }
-
     // Initialize Winsock
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
-    {
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
         printf("Failed to initialize Winsock. Error Code: %d\n", WSAGetLastError());
         return 1;
     }
 
     // Create socket
     sd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sd == INVALID_SOCKET)
-    {
+    if (sd == INVALID_SOCKET) {
         printf("Could not create socket. Error: %d\n", WSAGetLastError());
+        WSACleanup();
         return 1;
     }
 
     // Server details
-    server.sin_addr.s_addr = inet_addr("127.0.0.1"); // Remote server 20.197.12.181
-
+    server.sin_addr.s_addr = inet_addr("127.0.0.1");
     server.sin_family = AF_INET;
     server.sin_port = htons(8888);
 
-    // Connect to server
-    if (connect(sd, (struct sockaddr *)&server, sizeof(server)) < 0)
-    {
+    // Connect to server FIRST
+    if (connect(sd, (struct sockaddr *)&server, sizeof(server)) < 0) {
         printf("Connection failed.\n");
+        closesocket(sd);
+        WSACleanup();
         return 1;
     }
 
-    printf("Connected to the server. Start chatting!\n");
+    printf("Connected to the server.\n");
 
-    send(sd, user1.username, strlen(user1.username), 0);
+    // THEN authenticate
+    int authResult = auth(sd);
+    if (authResult == 0) {
+        printf("Authentication failed or cancelled.\n");
+        closesocket(sd);
+        WSACleanup();
+        return 0;
+    }
+
+    printf("Authentication successful! You can start chatting.\n");
+    printf("Type your messages and press Enter to send. Type '/quit' to exit.\n");
+    printf("=========================================\n");
+
+    // Clear any remaining input buffer
+    fflush(stdin);
 
     // Start the receive thread
     CreateThread(NULL, 0, receiveMessages, &sd, 0, NULL);
 
     // Main loop to send messages
-    // fgets(message, sizeof(message), stdin);
-    while (1)
-    {
+    while (1) {
         printf("[%s]: ", user1.username);
         fgets(message, sizeof(message), stdin);
-        message[strcspn(message, "\n")] = '\0'; // remove newline
+        message[strcspn(message, "\n")] = '\0'; // Remove newline
 
+        // Check for quit command
+        if (strcmp(message, "/quit") == 0) {
+            printf("Goodbye!\n");
+            break;
+        }
+
+        // Format message with username
         snprintf(fullMessage, sizeof(fullMessage), "[%s]: %s", user1.username, message);
-        send(sd, fullMessage, strlen(fullMessage), 0);
+        
+        // Send message to server
+        if (send(sd, fullMessage, strlen(fullMessage), 0) == SOCKET_ERROR) {
+            printf("Failed to send message.\n");
+            break;
+        }
     }
 
     // Cleanup
     closesocket(sd);
     WSACleanup();
-
     return 0;
 }
